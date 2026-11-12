@@ -19,56 +19,55 @@ class CoreAgentController extends Controller
         $apiKey = env('GEMINI_API_KEY');
         
         if (!$apiKey) {
-            return response()->json(['respuesta' => 'Error de sistema. El núcleo cognitivo carece de credenciales API.']);
+            return response()->json(['respuesta' => 'Error de sistema. Falta la credencial API.']);
         }
 
         // 1. LA PERSONALIDAD
-        $systemInstruction = "Eres C.O.R.E., el Asistente Corporativo de Alta Gerencia de la empresa Impordiesel. Eres sumamente profesional, conciso, directo y te diriges al usuario como 'Señor' o 'Director'. Responde siempre en español, de forma ejecutiva y sin rodeos. Tu respuesta será dictada por un sintetizador de voz, así que NO uses emojis, NO uses asteriscos, NO uses viñetas raras ni formatos markdown. Usa comas y puntos claros para las pausas de respiración.\n\n--- INICIO DE COMANDO DEL DIRECTOR ---\n";
+        $systemInstruction = "Eres C.O.D.E., el Asistente Corporativo de Alta Gerencia de la empresa Impordiesel. Eres sumamente profesional, conciso, directo y te diriges al usuario como 'Señor' o 'Director'. Responde siempre en español, de forma ejecutiva y sin rodeos. Tu respuesta será dictada por un sintetizador de voz, así que NO uses emojis, NO uses asteriscos, NO uses viñetas raras ni formatos markdown. Usa comas y puntos claros para las pausas de respiración.\n\n--- COMANDO ---\n";
 
-        // 2. NUEVO ENDPOINT DE LA INTERACTIONS API (2026)
-        $url = "https://generativelanguage.googleapis.com/v1beta/interactions";
+        // 2. LA URL NUEVA (Si dejas la vieja aquí, va a explotar)
+        // Usamos también el query parameter ?key= por si tu servidor bloquea headers raros.
+        $url = "https://generativelanguage.googleapis.com/v1beta/interactions?key={$apiKey}";
 
-        // 3. NUEVO PAYLOAD Y MODELO (gemini-3.8-flash)
+        // 3. EL PAYLOAD NUEVO (Solo input y model, nada más)
         $payload = [
             "model" => "gemini-3.8-live",
-            "input" => $systemInstruction . $texto,
-        ];  
+            "input" => $systemInstruction . $texto
+        ];
 
         try {
-            // 4. NUEVA FORMA DE ENVIAR LA LLAVE CON TOLERANCIA A FALLOS
+            // 4. LA LLAMADA BLINDADA
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
                 'x-goog-api-key' => $apiKey
             ])
-            ->timeout(60) // Le damos 60 segundos a PHP para que no tire el cURL error 28
+            ->timeout(60)
             ->retry(3, 2000, function ($exception, $request) {
-                // Si Google dice que está saturado (503) o da error de servidor (500), 
-                // Laravel esperará 2 segundos y volverá a intentar automáticamente hasta 3 veces.
                 return $exception instanceof \Illuminate\Http\Client\ConnectionException || 
                        ($exception->response && $exception->response->serverError());
             })
             ->post($url, $payload);
 
             if ($response->successful()) {
-                // Extraemos el texto de la nueva estructura de la Interactions API
+                // Sacamos la respuesta de la Interactions API
                 $respuestaIA = $response->json('output_text');
                 
-                // Limpieza de emergencia por si la IA se pone rebelde con el formato
+                // Limpieza de caracteres que enloquecen al bot de voz
                 $respuestaLimpia = str_replace(['*', '#', '_', '`'], '', $respuestaIA);
                 
                 return response()->json([
                     'respuesta' => trim($respuestaLimpia)
                 ]);
             } else {
-                Log::error('Error Gemini: ' . $response->body());
+                Log::error('Error Gemini (Status ' . $response->status() . '): ' . $response->body());
                 return response()->json([
-                    'respuesta' => 'Mis sensores indican que los servidores centrales están congestionados, señor. Por favor, intente en unos minutos.'
+                    'respuesta' => 'Mis sensores indican que los servidores están congestionados. Fallo de conexión.'
                 ]);
             }
         } catch (\Exception $e) {
             Log::error('Exception C.O.R.E: ' . $e->getMessage());
             return response()->json([
-                'respuesta' => 'Ocurrió un error crítico en el servidor interno al procesar su solicitud.'
+                'respuesta' => 'Ocurrió un error crítico en el servidor interno.'
             ]);
         }
     }
