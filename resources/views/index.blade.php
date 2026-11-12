@@ -45,7 +45,7 @@
 
     <!-- Header -->
     <header class="w-full text-center mt-8">
-        <h1 class="text-4xl font-bold tracking-widest text-white shadow-neon">C.O.R.E.</h1>
+        <h1 class="text-4xl font-bold tracking-widest text-white shadow-neon">C.O.D.E.</h1>
         <p class="text-xs text-gray-500 uppercase tracking-widest mt-1" id="status-text">Sistema en Espera</p>
     </header>
 

@@ -38,11 +38,19 @@ class CoreAgentController extends Controller
         ];
 
         try {
-            // 4. NUEVA FORMA DE ENVIAR LA LLAVE (EN EL HEADER x-goog-api-key)
+            // 4. NUEVA FORMA DE ENVIAR LA LLAVE CON TOLERANCIA A FALLOS
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
                 'x-goog-api-key' => $apiKey
-            ])->post($url, $payload);
+            ])
+            ->timeout(60) // Le damos 60 segundos a PHP para que no tire el cURL error 28
+            ->retry(3, 2000, function ($exception, $request) {
+                // Si Google dice que está saturado (503) o da error de servidor (500), 
+                // Laravel esperará 2 segundos y volverá a intentar automáticamente hasta 3 veces.
+                return $exception instanceof \Illuminate\Http\Client\ConnectionException || 
+                       ($exception->response && $exception->response->serverError());
+            })
+            ->post($url, $payload);
 
             if ($response->successful()) {
                 // Extraemos el texto de la nueva estructura de la Interactions API
@@ -57,13 +65,13 @@ class CoreAgentController extends Controller
             } else {
                 Log::error('Error Gemini: ' . $response->body());
                 return response()->json([
-                    'respuesta' => 'Mis sensores indican un fallo de comunicación con los servidores de Google, señor. ' . $response->status()
+                    'respuesta' => 'Mis sensores indican que los servidores centrales están congestionados, señor. Por favor, intente en unos minutos.'
                 ]);
             }
         } catch (\Exception $e) {
             Log::error('Exception C.O.R.E: ' . $e->getMessage());
             return response()->json([
-                'respuesta' => 'Ocurrió un error crítico en el servidor interno.'
+                'respuesta' => 'Ocurrió un error crítico en el servidor interno al procesar su solicitud.'
             ]);
         }
     }
