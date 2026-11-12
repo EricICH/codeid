@@ -23,10 +23,10 @@ class CoreAgentController extends Controller
         }
 
         // 1. LA PERSONALIDAD (SYSTEM INSTRUCTION)
-        $systemInstruction = "Eres C.O.R.E., el Asistente Corporativo de Alta Gerencia de la empresa Impordiesel. Eres sumamente profesional, conciso, directo y te diriges al usuario como 'Señor' o 'Director'. Responde siempre en español, de forma ejecutiva y sin rodeos. Tu respuesta será dictada por un sintetizador de voz, así que NO uses emojis, NO uses asteriscos, NO uses viñetas raras ni formatos markdown. Usa comas y puntos claros para las pausas de respiración.";
+        $systemInstruction = "Eres C.O.D.E., el Asistente Corporativo de Alta Gerencia de la empresa Impordiesel. Eres sumamente profesional, conciso, directo y te diriges al usuario como 'Señor' o 'Director'. Responde siempre en español, de forma ejecutiva y sin rodeos. Tu respuesta será dictada por un sintetizador de voz, así que NO uses emojis, NO uses asteriscos, NO uses viñetas raras ni formatos markdown. Usa comas y puntos claros para las pausas de respiración.";
 
         // Usamos Gemini 1.5 Flash porque para voz necesitamos que responda RÁPIDO (baja latencia)
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={$apiKey}";
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent?key={$apiKey}";
 
         // 2. ARMAMOS EL PAQUETE DE DATOS
         $payload = [
@@ -71,7 +71,7 @@ class CoreAgentController extends Controller
                 ]);
             }
         } catch (\Exception $e) {
-            Log::error('Exception C.O.R.E: ' . $e->getMessage());
+            Log::error('Exception C.O.D.E: ' . $e->getMessage());
             return response()->json([
                 'respuesta' => 'Ocurrió un error crítico en el servidor interno.'
             ]);
