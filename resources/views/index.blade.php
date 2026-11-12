@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>C.O.R.E. Assistant</title>
+    <title>C.O.D.E. Assistant</title>
     
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#00ffcc">
@@ -25,13 +25,18 @@
 </head>
 <body class="h-screen w-screen flex flex-col items-center justify-between p-4 relative">
 
-    <!-- Botón de Mute Esquina Superior Derecha -->
+    <!-- Botón de Mostrar/Ocultar Teclado (Esquina Superior Izquierda) -->
+    <button id="btn-teclado" class="absolute top-6 left-6 text-gray-500 hover:text-[#00ffcc] transition-colors focus:outline-none">
+        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+        </svg>
+    </button>
+
+    <!-- Botón de Mute (Esquina Superior Derecha) -->
     <button id="btn-mute" class="absolute top-6 right-6 text-gray-500 hover:text-[#00ffcc] transition-colors focus:outline-none">
-        <!-- Icono Volumen Encendido (Por defecto) -->
         <svg id="icon-vol-on" class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M11 5L6 9H2v6h4l5 4V5z"></path>
         </svg>
-        <!-- Icono Volumen Apagado (Oculto) -->
         <svg id="icon-vol-off" class="w-7 h-7 hidden text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h2.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path>
@@ -49,17 +54,22 @@
         <div class="self-start text-xs text-gray-400">Iniciando en código base impordiesel... OK.</div>
     </div>
 
-    <!-- Controles (Micrófono, Input y Enviar) -->
-    <div class="mb-6 w-full max-w-lg flex items-center gap-3 px-2">
-        <button id="btn-mic" class="radar w-14 h-14 shrink-0 rounded-full bg-transparent border-2 border-[#00ffcc] text-[#00ffcc] flex justify-center items-center focus:outline-none transition-colors duration-300">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
-        </button>
+    <!-- Controles Inferiores (Texto Oculto + Micrófono Grande) -->
+    <div class="w-full max-w-lg flex flex-col items-center gap-4 mb-8 px-2">
+        
+        <!-- Campo de Texto (Oculto por defecto) -->
+        <div id="contenedor-texto" class="hidden w-full flex items-center gap-2 transition-all duration-300">
+            <input type="text" id="input-texto" placeholder="Escriba un comando..." 
+                   class="flex-1 h-12 bg-black border border-gray-700 rounded-full px-4 text-[#00ffcc] placeholder-gray-600 focus:outline-none focus:border-[#00ffcc] transition-colors">
+            
+            <button id="btn-enviar" class="w-12 h-12 shrink-0 rounded-full bg-[#00ffcc] text-black flex justify-center items-center focus:outline-none hover:bg-white transition-colors">
+                <svg class="w-5 h-5 ml-1" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path></svg>
+            </button>
+        </div>
 
-        <input type="text" id="input-texto" placeholder="Escriba un comando..." 
-               class="flex-1 h-12 bg-black border border-gray-700 rounded-full px-4 text-[#00ffcc] placeholder-gray-600 focus:outline-none focus:border-[#00ffcc] transition-colors">
-
-        <button id="btn-enviar" class="w-12 h-12 shrink-0 rounded-full bg-[#00ffcc] text-black flex justify-center items-center focus:outline-none hover:bg-white transition-colors">
-            <svg class="w-5 h-5 ml-1" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path></svg>
+        <!-- Botón de Micrófono (Gigante y Centrado) -->
+        <button id="btn-mic" class="radar w-24 h-24 rounded-full bg-transparent border-2 border-[#00ffcc] text-[#00ffcc] flex justify-center items-center focus:outline-none transition-colors duration-300">
+            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
         </button>
     </div>
 
@@ -69,6 +79,8 @@
         }
 
         const btnMic = document.getElementById('btn-mic');
+        const btnTeclado = document.getElementById('btn-teclado');
+        const contenedorTexto = document.getElementById('contenedor-texto');
         const btnEnviar = document.getElementById('btn-enviar');
         const inputTexto = document.getElementById('input-texto');
         const chatBox = document.getElementById('chat-box');
@@ -80,13 +92,23 @@
         const iconVolOff = document.getElementById('icon-vol-off');
         let isMuted = false;
 
+        // --- LÓGICA DE TOGGLE TECLADO ---
+        btnTeclado.addEventListener('click', () => {
+            contenedorTexto.classList.toggle('hidden');
+            if (!contenedorTexto.classList.contains('hidden')) {
+                inputTexto.focus();
+                btnTeclado.classList.add('text-[#00ffcc]');
+            } else {
+                btnTeclado.classList.remove('text-[#00ffcc]');
+            }
+        });
+
         // --- LÓGICA DE MUTE ---
         btnMute.addEventListener('click', () => {
             isMuted = !isMuted;
             if (isMuted) {
                 iconVolOn.classList.add('hidden');
                 iconVolOff.classList.remove('hidden');
-                // Si la IA estaba hablando justo en este momento, la callamos de golpe
                 window.speechSynthesis.cancel(); 
             } else {
                 iconVolOn.classList.remove('hidden');
@@ -104,7 +126,6 @@
             reconocimiento.interimResults = false;
 
             reconocimiento.onstart = () => {
-                // Si la IA estaba hablando, la callamos para poder escuchar al jefe
                 window.speechSynthesis.cancel(); 
                 btnMic.classList.add('escuchando', 'bg-[#00ffcc]', 'text-black');
                 statusText.innerText = 'ESCUCHANDO...';
@@ -141,6 +162,8 @@
             if(inputTexto.value.trim() !== '') {
                 procesarEntrada(inputTexto.value);
                 inputTexto.value = ''; 
+                contenedorTexto.classList.add('hidden'); // Oculta el teclado tras enviar para mantener limpio
+                btnTeclado.classList.remove('text-[#00ffcc]');
             }
         });
 
@@ -148,6 +171,8 @@
             if (e.key === 'Enter' && inputTexto.value.trim() !== '') {
                 procesarEntrada(inputTexto.value);
                 inputTexto.value = ''; 
+                contenedorTexto.classList.add('hidden');
+                btnTeclado.classList.remove('text-[#00ffcc]');
             }
         });
 
@@ -180,18 +205,18 @@
                 const data = await response.json();
                 
                 statusText.innerText = 'SISTEMA EN ESPERA';
-                agregarMensaje('C.O.R.E.', data.respuesta);
+                agregarMensaje('C.O.D.E.', data.respuesta);
                 
                 hablar(data.respuesta);
 
             } catch (error) {
                 statusText.innerText = 'ERROR DE RED';
-                agregarMensaje('C.O.R.E.', 'Fallo de conexión con el núcleo cognitivo.');
+                agregarMensaje('C.O.D.E.', 'Fallo de conexión con el núcleo cognitivo.');
             }
         }
 
         function hablar(texto) {
-            if (isMuted) return; // Si está en silencio, abortamos aquí y no suena nada
+            if (isMuted) return; 
             
             const sintesis = window.speechSynthesis;
             const msj = new SpeechSynthesisUtterance(texto);
