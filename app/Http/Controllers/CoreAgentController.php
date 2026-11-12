@@ -31,7 +31,7 @@ class CoreAgentController extends Controller
 
         // 3. EL PAYLOAD NUEVO (Usamos gemini-4-carbon, el modelo estándar comprobado de la doc)
         $payload = [
-            "model" => "gemini-4-carbon",
+            "model" => "gemini-3.8-flash",
             "input" => $systemInstruction . $texto
         ];
 
