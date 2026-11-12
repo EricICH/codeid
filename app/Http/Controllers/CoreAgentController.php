@@ -30,7 +30,7 @@ class CoreAgentController extends Controller
 
         // 3. NUEVO PAYLOAD Y MODELO (gemini-3.8-flash)
         $payload = [
-            "model" => "gemini-3.8-flash",
+            "model" => "gemini-3.8-live",
             "input" => $systemInstruction . $texto,
             "generation_config" => [
                 "temperature" => 0.2
