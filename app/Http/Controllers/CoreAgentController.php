@@ -16,73 +16,71 @@ class CoreAgentController extends Controller
             return response()->json(['respuesta' => 'No logré escuchar el comando, señor.']);
         }
 
-        $apiKey = env('GEMINI_API_KEY');
+        // Ahora usamos esta variable genérica en el .env
+        $apiKey = env('OPENAI_API_KEY');
         
         if (!$apiKey) {
-            return response()->json(['respuesta' => 'Error de sistema. Falta la credencial API.']);
+            return response()->json(['respuesta' => 'Error de sistema. Falta la credencial API universal.']);
         }
 
         // 1. LA PERSONALIDAD
-        $systemInstruction = "Eres C.O.D.E., el Asistente Corporativo de Alta Gerencia de la empresa Impordiesel. Eres sumamente profesional, conciso, directo y te diriges al usuario como 'Señor' o 'Director'. Responde siempre en español, de forma ejecutiva y sin rodeos. Tu respuesta será dictada por un sintetizador de voz, así que NO uses emojis, NO uses asteriscos, NO uses viñetas raras ni formatos markdown. Usa comas y puntos claros para las pausas de respiración.\n\n--- COMANDO ---\n";
+        $systemInstruction = "Eres C.O.D.E., el Asistente Corporativo de Alta Gerencia de la empresa Impordiesel. Eres sumamente profesional, conciso, directo y te diriges al usuario como 'Señor' o 'Director'. Responde siempre en español, de forma ejecutiva y sin rodeos. Tu respuesta será dictada por un sintetizador de voz, así que NO uses emojis, NO uses asteriscos, NO uses viñetas raras ni formatos markdown. Usa comas y puntos claros para las pausas de respiración.";
 
-        // 2. LA URL NUEVA (Si dejas la vieja aquí, va a explotar)
-        // Usamos también el query parameter ?key= por si tu servidor bloquea headers raros.
-        $url = "https://generativelanguage.googleapis.com/v1beta/interactions";
+        // 2. LA URL Y EL MODELO (AQUÍ ESTÁ LA MAGIA)
+        // Opción A: GROQ (El más rápido del mundo, Llama 3, plan gratis generoso)
+        $url = "https://api.groq.com/openai/v1/chat/completions";
+        $model = "llama3-8b-8192"; 
 
-        // 3. EL PAYLOAD NUEVO (Usamos gemini-4-carbon, el modelo estándar comprobado de la doc)
+        // Opción B: OPENAI (Descomenta estas dos líneas si prefieres usar llave de ChatGPT)
+        // $url = "https://api.openai.com/v1/chat/completions";
+        // $model = "gpt-4o-mini";
+
+        // 3. EL PAYLOAD (Estándar de la industria)
         $payload = [
-            "model" => "gemini-3.8-live",
-            "input" => $systemInstruction . $texto
+            "model" => $model,
+            "messages" => [
+                ["role" => "system", "content" => $systemInstruction],
+                ["role" => "user", "content" => $texto]
+            ],
+            "temperature" => 0.2
         ];
 
         try {
             // 4. LA LLAMADA BLINDADA
             $response = Http::withHeaders([
-                'Content-Type' => 'application/json',
-                'x-goog-api-key' => $apiKey
+                'Authorization' => 'Bearer ' . $apiKey,
+                'Content-Type' => 'application/json'
             ])
-            ->timeout(60)
-            ->retry(3, 2000, function ($exception, $request) {
+            ->timeout(30)
+            ->retry(2, 1000, function ($exception, $request) {
                 return $exception instanceof \Illuminate\Http\Client\ConnectionException || 
                        ($exception->response && $exception->response->serverError());
             })
             ->post($url, $payload);
 
             if ($response->successful()) {
-                // Sacamos la respuesta de la Interactions API
-                $respuestaIA = $response->json('output_text');
+                // Sacamos la respuesta de la estructura estándar (choices.0.message.content)
+                $respuestaIA = $response->json('choices.0.message.content');
                 
-                // Limpieza de caracteres que enloquecen al bot de voz
+                // Limpieza de caracteres rebeldes
                 $respuestaLimpia = str_replace(['*', '#', '_', '`'], '', $respuestaIA);
                 
                 return response()->json([
                     'respuesta' => trim($respuestaLimpia)
                 ]);
             } else {
-                Log::error('Error Gemini (Status ' . $response->status() . '): ' . $response->body());
-                return response()->json([
-                    'respuesta' => 'Mis sensores indican que los servidores están congestionados. Fallo de conexión.'
-                ]);
+                Log::error('Error API (Status ' . $response->status() . '): ' . $response->body());
+                
+                if ($response->status() === 429) {
+                    return response()->json(['respuesta' => 'Señor, hemos agotado la cuota de procesamiento gratuito.']);
+                }
+
+                return response()->json(['respuesta' => 'Mis sensores indican un fallo de conexión con el núcleo cognitivo.']);
             }
         } catch (\Exception $e) {
-            $errorMsg = $e->getMessage();
-            Log::error('Exception C.O.D.E: ' . $errorMsg);
-            
-            // Gestionando la pobreza con estilo para que el jefe no sospeche
-            if (str_contains($errorMsg, '503') || str_contains($errorMsg, 'high demand')) {
-                return response()->json([
-                    'respuesta' => 'Director, la red global de servidores se encuentra actualmente saturada. Le sugiero reintentar el comando en unos instantes.'
-                ]);
-            }
-            
-            if (str_contains($errorMsg, '429') || str_contains($errorMsg, 'Rate limit')) {
-                return response()->json([
-                    'respuesta' => 'Señor, hemos agotado la cuota de procesamiento del servidor gratuito. Por favor, contacte al departamento de sistemas.'
-                ]);
-            }
-
+            Log::error('Exception C.O.D.E: ' . $e->getMessage());
             return response()->json([
-                'respuesta' => 'Mis sensores han detectado una anomalía crítica en el servidor interno.'
+                'respuesta' => 'Ocurrió un error crítico en el servidor interno.'
             ]);
         }
     }
