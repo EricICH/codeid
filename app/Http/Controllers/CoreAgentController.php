@@ -22,41 +22,31 @@ class CoreAgentController extends Controller
             return response()->json(['respuesta' => 'Error de sistema. El núcleo cognitivo carece de credenciales API.']);
         }
 
-        // 1. LA PERSONALIDAD (SYSTEM INSTRUCTION)
-        $systemInstruction = "Eres C.O.D.E., el Asistente Corporativo de Alta Gerencia de la empresa Impordiesel. Eres sumamente profesional, conciso, directo y te diriges al usuario como 'Señor' o 'Director'. Responde siempre en español, de forma ejecutiva y sin rodeos. Tu respuesta será dictada por un sintetizador de voz, así que NO uses emojis, NO uses asteriscos, NO uses viñetas raras ni formatos markdown. Usa comas y puntos claros para las pausas de respiración.";
+        // 1. LA PERSONALIDAD
+        $systemInstruction = "Eres C.O.R.E., el Asistente Corporativo de Alta Gerencia de la empresa Impordiesel. Eres sumamente profesional, conciso, directo y te diriges al usuario como 'Señor' o 'Director'. Responde siempre en español, de forma ejecutiva y sin rodeos. Tu respuesta será dictada por un sintetizador de voz, así que NO uses emojis, NO uses asteriscos, NO uses viñetas raras ni formatos markdown. Usa comas y puntos claros para las pausas de respiración.\n\n--- INICIO DE COMANDO DEL DIRECTOR ---\n";
 
-        // Usamos Gemini 1.5 Flash porque para voz necesitamos que responda RÁPIDO (baja latencia)
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-4-hydrogen:generateContent?key={$apiKey}";
+        // 2. NUEVO ENDPOINT DE LA INTERACTIONS API (2026)
+        $url = "https://generativelanguage.googleapis.com/v1beta/interactions";
 
-        // 2. ARMAMOS EL PAQUETE DE DATOS
+        // 3. NUEVO PAYLOAD Y MODELO (gemini-3.8-flash)
         $payload = [
-            "system_instruction" => [
-                "parts" => [
-                    ["text" => $systemInstruction]
-                ]
-            ],
-            "contents" => [
-                [
-                    "parts" => [
-                        ["text" => $texto]
-                    ]
-                ]
-            ],
-            // Configuramos la temperatura baja (0.2) para que sea analítico y no invente tonterías
-            "generationConfig" => [
+            "model" => "gemini-3.8-flash",
+            "input" => $systemInstruction . $texto,
+            "generation_config" => [
                 "temperature" => 0.2
             ]
         ];
 
         try {
-            // 3. ENVIAMOS LA PETICIÓN A GOOGLE
+            // 4. NUEVA FORMA DE ENVIAR LA LLAVE (EN EL HEADER x-goog-api-key)
             $response = Http::withHeaders([
-                'Content-Type' => 'application/json'
+                'Content-Type' => 'application/json',
+                'x-goog-api-key' => $apiKey
             ])->post($url, $payload);
 
             if ($response->successful()) {
-                // Extraemos el texto de la respuesta mutante en JSON de Google
-                $respuestaIA = $response->json('candidates.0.content.parts.0.text');
+                // Extraemos el texto de la nueva estructura de la Interactions API
+                $respuestaIA = $response->json('output_text');
                 
                 // Limpieza de emergencia por si la IA se pone rebelde con el formato
                 $respuestaLimpia = str_replace(['*', '#', '_', '`'], '', $respuestaIA);
@@ -67,11 +57,11 @@ class CoreAgentController extends Controller
             } else {
                 Log::error('Error Gemini: ' . $response->body());
                 return response()->json([
-                    'respuesta' => 'Mis sensores indican un fallo de comunicación con los servidores de Google, señor.'
+                    'respuesta' => 'Mis sensores indican un fallo de comunicación con los servidores de Google, señor. ' . $response->status()
                 ]);
             }
         } catch (\Exception $e) {
-            Log::error('Exception C.O.D.E: ' . $e->getMessage());
+            Log::error('Exception C.O.R.E: ' . $e->getMessage());
             return response()->json([
                 'respuesta' => 'Ocurrió un error crítico en el servidor interno.'
             ]);
