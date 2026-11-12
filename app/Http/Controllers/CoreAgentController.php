@@ -27,11 +27,11 @@ class CoreAgentController extends Controller
 
         // 2. LA URL NUEVA (Si dejas la vieja aquí, va a explotar)
         // Usamos también el query parameter ?key= por si tu servidor bloquea headers raros.
-        $url = "https://generativelanguage.googleapis.com/v1beta/interactions?key={$apiKey}";
+        $url = "https://generativelanguage.googleapis.com/v1beta/interactions";
 
-        // 3. EL PAYLOAD NUEVO (Solo input y model, nada más)
+        // 3. EL PAYLOAD NUEVO (Usamos gemini-4-carbon, el modelo estándar comprobado de la doc)
         $payload = [
-            "model" => "gemini-3.8-live",
+            "model" => "gemini-4-carbon",
             "input" => $systemInstruction . $texto
         ];
 
