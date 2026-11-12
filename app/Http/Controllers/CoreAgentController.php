@@ -32,10 +32,7 @@ class CoreAgentController extends Controller
         $payload = [
             "model" => "gemini-3.8-live",
             "input" => $systemInstruction . $texto,
-            "generation_config" => [
-                "temperature" => 0.2
-            ]
-        ];
+        ];  
 
         try {
             // 4. NUEVA FORMA DE ENVIAR LA LLAVE CON TOLERANCIA A FALLOS
