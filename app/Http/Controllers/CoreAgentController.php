@@ -17,7 +17,7 @@ class CoreAgentController extends Controller
         }
 
         // Ahora usamos esta variable genérica en el .env
-        $apiKey = env('OPENAI_API_KEY');
+        $apiKey = config('services.apikey.openai');
         
         if (!$apiKey) {
             return response()->json(['respuesta' => 'Error de sistema. Falta la credencial API universal.']);
