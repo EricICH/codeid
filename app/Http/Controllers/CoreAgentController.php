@@ -65,9 +65,24 @@ class CoreAgentController extends Controller
                 ]);
             }
         } catch (\Exception $e) {
-            Log::error('Exception C.O.R.E: ' . $e->getMessage());
+            $errorMsg = $e->getMessage();
+            Log::error('Exception C.O.D.E: ' . $errorMsg);
+            
+            // Gestionando la pobreza con estilo para que el jefe no sospeche
+            if (str_contains($errorMsg, '503') || str_contains($errorMsg, 'high demand')) {
+                return response()->json([
+                    'respuesta' => 'Director, la red global de servidores se encuentra actualmente saturada. Le sugiero reintentar el comando en unos instantes.'
+                ]);
+            }
+            
+            if (str_contains($errorMsg, '429') || str_contains($errorMsg, 'Rate limit')) {
+                return response()->json([
+                    'respuesta' => 'Señor, hemos agotado la cuota de procesamiento del servidor gratuito. Por favor, contacte al departamento de sistemas.'
+                ]);
+            }
+
             return response()->json([
-                'respuesta' => 'Ocurrió un error crítico en el servidor interno.'
+                'respuesta' => 'Mis sensores han detectado una anomalía crítica en el servidor interno.'
             ]);
         }
     }
