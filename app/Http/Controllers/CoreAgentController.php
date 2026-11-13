@@ -88,7 +88,7 @@ class CoreAgentController extends Controller
                         'total_comprometido_viajes' => $datosJSON['general_comprometido'] ?? 0,
                         'disponible_para_nueva_venta' => $datosJSON['general_venta'] ?? 0,
                     ];
-                    $contenidoHerramienta = json_encode($resumenParaIA);
+                    $contenidoHerramienta =$datosJSON; // json_encode($resumenParaIA);
                 } else {
                     Log::error('Error API Impordiesel: Status ' . $respuestaInventario->status());
                     $contenidoHerramienta = "Error: El sistema central devolvió un código " . $respuestaInventario->status();
