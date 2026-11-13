@@ -16,71 +16,146 @@ class CoreAgentController extends Controller
             return response()->json(['respuesta' => 'No logré escuchar el comando, señor.']);
         }
 
-        // Ahora usamos esta variable genérica en el .env
-        $apiKey = config('services.apikey.openai');
-        
+        $apiKey = env('OPENAI_API_KEY');
         if (!$apiKey) {
             return response()->json(['respuesta' => 'Error de sistema. Falta la credencial API universal.']);
         }
 
-        // 1. LA PERSONALIDAD
-        $systemInstruction = "Eres C.O.D.E., el Asistente Corporativo de Alta Gerencia de la empresa Impordiesel. Eres sumamente profesional, conciso, directo y te diriges al usuario como 'Señor' o 'Director'. Responde siempre en español, de forma ejecutiva y sin rodeos. Tu respuesta será dictada por un sintetizador de voz, así que NO uses emojis, NO uses asteriscos, NO uses viñetas raras ni formatos markdown. Usa comas y puntos claros para las pausas de respiración.";
+        // 1. INSTRUCCIÓN GERENCIAL (Ajustada para métricas financieras/logísticas)
+        $systemInstruction = "Eres C.O.R.E., el Asistente Corporativo de Alta Gerencia de Impordiesel. Eres profesional, conciso y te diriges al usuario como 'Señor' o 'Director'. Responde en español, de forma ejecutiva. Si te preguntan por combustible, inventario, disponibilidad o capacidad de venta, USA OBLIGATORIAMENTE LA HERRAMIENTA DISPONIBLE. Cuando tengas los datos, no leas números crudos uno por uno. Da un resumen ejecutivo diferenciando entre: el inventario físico total, el volumen ya comprometido en viajes, y el combustible libre real para ventas nuevas. Tu respuesta será dictada por un sintetizador de voz, así que NO uses viñetas raras ni markdown.";
 
-        // 2. LA URL Y EL MODELO (AQUÍ ESTÁ LA MAGIA)
-        // Opción A: GROQ (El más rápido del mundo, Llama 3, plan gratis generoso)
         $url = "https://api.groq.com/openai/v1/chat/completions";
         $model = "openai/gpt-oss-20b"; 
 
-        // Opción B: OPENAI (Descomenta estas dos líneas si prefieres usar llave de ChatGPT)
-        // $url = "https://api.openai.com/v1/chat/completions";
-        // $model = "gpt-4o-mini";
+        $messages = [
+            ["role" => "system", "content" => $systemInstruction],
+            ["role" => "user", "content" => $texto]
+        ];
 
-        // 3. EL PAYLOAD (Estándar de la industria)
+        // 2. DEFINICIÓN DE LA HERRAMIENTA DEL DASHBOARD
+        $tools = [
+            [
+                "type" => "function",
+                "function" => [
+                    "name" => "consultar_metricas_dashboard",
+                    "description" => "Consulta las métricas gerenciales del combustible. Devuelve el inventario físico en tanques, vehículos precargados, volumen comprometido en despachos programados y la disponibilidad real para la venta (por Diésel y MGO).",
+                    "parameters" => [
+                        "type" => "object",
+                        "properties" => [], 
+                    ]
+                ]
+            ]
+        ];
+
         $payload = [
             "model" => $model,
-            "messages" => [
-                ["role" => "system", "content" => $systemInstruction],
-                ["role" => "user", "content" => $texto]
-            ],
+            "messages" => $messages,
+            "tools" => $tools,
+            "tool_choice" => "auto",
             "temperature" => 0.2
         ];
 
         try {
-            // 4. LA LLAMADA BLINDADA
+            // Llamada inicial
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $apiKey,
                 'Content-Type' => 'application/json'
-            ])
-            ->timeout(30)
-            ->retry(2, 1000, function ($exception, $request) {
-                return $exception instanceof \Illuminate\Http\Client\ConnectionException || 
-                       ($exception->response && $exception->response->serverError());
-            })
-            ->post($url, $payload);
+            ])->timeout(30)->post($url, $payload);
 
-            if ($response->successful()) {
-                // Sacamos la respuesta de la estructura estándar (choices.0.message.content)
-                $respuestaIA = $response->json('choices.0.message.content');
+            if (!$response->successful()) {
+                Log::error('Error API Inicial: ' . $response->body());
+                return response()->json(['respuesta' => 'Fallo de conexión en la primera fase del núcleo cognitivo.']);
+            }
+
+            $responseData = $response->json();
+            $mensajeIA = $responseData['choices'][0]['message'];
+
+            // 3. LA IA DECIDE USAR LA HERRAMIENTA
+            if (isset($mensajeIA['tool_calls']) && count($mensajeIA['tool_calls']) > 0) {
                 
-                // Limpieza de caracteres rebeldes
-                $respuestaLimpia = str_replace(['*', '#', '_', '`'], '', $respuestaIA);
+                $toolCall = $mensajeIA['tool_calls'][0];
                 
-                return response()->json([
-                    'respuesta' => trim($respuestaLimpia)
-                ]);
-            } else {
-                Log::error('Error API (Status ' . $response->status() . '): ' . $response->body());
-                
-                if ($response->status() === 429) {
-                    return response()->json(['respuesta' => 'Señor, hemos agotado la cuota de procesamiento gratuito.']);
+                if ($toolCall['function']['name'] === 'consultar_metricas_dashboard') {
+                    
+                    // --- CONEXIÓN AL NUEVO ENDPOINT DEL DASHBOARD ---
+                    // IMPORTANTE: Cambia "tu-sistema-viejo.com" por el dominio real.
+                    // Y mantuve tu error ortográfico "comnbustible-dashboard" para que no se rompa la ruta.
+                    $urlSistemaViejo = "https://tucombustible.com.ve/api/admin/reportes/comnbustible-dashboard"; 
+                    
+                    try {
+                        $respuestaInventario = Http::timeout(10)->get($urlSistemaViejo);
+                        
+                        if ($respuestaInventario->successful()) {
+                            // Extraemos la data. (Dependiendo de si tu Controller devuelve un array plano o envuelto en data)
+                            // Si devuelve directo el array, usamos $respuestaInventario->json()
+                            $datosJSON = $respuestaInventario->json();
+                            
+                            // Simplificamos la data antes de dársela a la IA para no confundirla con las tablas de $disponibilidades completas
+                            $resumenParaIA = [
+                                'total_fisico_general' => $datosJSON['general_fisico'] ?? 0,
+                                'total_comprometido_viajes' => $datosJSON['general_comprometido'] ?? 0,
+                                'disponible_para_nueva_venta' => $datosJSON['general_venta'] ?? 0,
+                                'desglose_diesel' => [
+                                    'disponible_total' => $datosJSON['totalDisponibleDiesel'] ?? 0,
+                                    'comprometido' => $datosJSON['totalComprometidoDiesel'] ?? 0
+                                ],
+                                'desglose_mgo' => [
+                                    'disponible_total' => $datosJSON['totalDisponibleMgo'] ?? 0,
+                                    'comprometido' => $datosJSON['totalComprometidoMgo'] ?? 0
+                                ]
+                            ];
+
+                            $contenidoHerramienta = json_encode($resumenParaIA);
+                        } else {
+                            $contenidoHerramienta = "Error: El sistema central devolvió un código " . $respuestaInventario->status();
+                        }
+                    } catch (\Exception $e) {
+                        $contenidoHerramienta = "Error de red al intentar contactar al sistema central: " . $e->getMessage();
+                    }
+
+                    // 4. SEGUNDO ENVÍO: Devolvemos los datos gerenciales a la IA
+                    $messages[] = $mensajeIA; 
+                    $messages[] = [
+                        "role" => "tool",
+                        "tool_call_id" => $toolCall['id'],
+                        "content" => (string)$contenidoHerramienta
+                    ];
+
+                    $payloadFase2 = [
+                        "model" => $model,
+                        "messages" => $messages,
+                        "temperature" => 0.2
+                    ];
+
+                    $responseFase2 = Http::withHeaders([
+                        'Authorization' => 'Bearer ' . $apiKey,
+                        'Content-Type' => 'application/json'
+                    ])->timeout(30)->post($url, $payloadFase2);
+
+                    if ($responseFase2->successful()) {
+                        $respuestaFinal = $responseFase2->json('choices.0.message.content');
+                    } else {
+                        Log::error('Error API Fase 2: ' . $responseFase2->body());
+                        $respuestaFinal = 'Error al procesar las métricas financieras, señor.';
+                    }
+
+                } else {
+                    $respuestaFinal = "El núcleo intentó ejecutar una herramienta no autorizada.";
                 }
 
-                return response()->json(['respuesta' => 'Mis sensores indican un fallo de conexión con el núcleo cognitivo.']);
+            } else {
+                $respuestaFinal = $mensajeIA['content'] ?? 'Comando recibido, pero sin parámetros de acción.';
             }
-        } catch (\Exception $e) {
-            Log::error('Exception C.O.D.E: ' . $e->getMessage());
+
+            $respuestaLimpia = str_replace(['*', '#', '_', '`'], '', $respuestaFinal);
             return response()->json([
-                'respuesta' => 'Ocurrió un error crítico en el servidor interno.'
+                'respuesta' => trim($respuestaLimpia)
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Exception C.O.R.E: ' . $e->getMessage());
+            return response()->json([
+                'respuesta' => 'Ocurrió un fallo en los sistemas centrales.'
             ]);
         }
     }

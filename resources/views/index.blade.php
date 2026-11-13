@@ -215,15 +215,35 @@
             }
         }
 
+
         function hablar(texto) {
             if (isMuted) return; 
             
             const sintesis = window.speechSynthesis;
             const msj = new SpeechSynthesisUtterance(texto);
-            msj.lang = 'es-ES';
-            msj.rate = 1.1; 
+            
+            // Bajamos un poco la velocidad para que no suene tan ametralladora robótica
+            msj.rate = 1.0; 
+            msj.pitch = 1.0;
+            
+            // Si las voces ya cargaron, buscamos la menos espantosa (Neutral / Google)
+            if (vocesDisponibles.length > 0) {
+                // Priorizamos español neutro (México) o las voces premium de red de Google
+                const vozIdeal = vocesDisponibles.find(v => v.name.includes('Google') && v.lang.includes('es')) 
+                              || vocesDisponibles.find(v => v.lang === 'es-MX')
+                              || vocesDisponibles.find(v => v.lang === 'es-ES');
+                
+                if (vozIdeal) {
+                    msj.voice = vozIdeal;
+                }
+            } else {
+                msj.lang = 'es-MX'; // Fallback a neutro
+            }
+
             sintesis.speak(msj);
         }
+
+
     </script>
 </body>
 </html>
