@@ -16,11 +16,11 @@ class CoreAgentController extends Controller
             return response()->json(['respuesta' => 'No logré escuchar el comando, señor.']);
         }
 
-        Log::info('--- NUEVO COMANDO C.O.R.E: ' . $texto . ' ---');
+        Log::info('--- NUEVO COMANDO C.O.D.E: ' . $texto . ' ---');
 
         $apiKey = env('OPENAI_API_KEY');
         
-        $systemInstruction = "Eres C.O.R.E., el Asistente Corporativo de Impordiesel. Eres profesional, conciso y te diriges al usuario como 'Señor'. Si te preguntan por combustible o inventario, usa la herramienta. Cuando recibas los datos, NO leas todos los números. Da un resumen rápido del inventario físico total, el volumen comprometido y el combustible libre real para ventas. Tu respuesta será dictada, usa lenguaje natural.";
+        $systemInstruction = "Eres C.O.D.E., el Asistente Corporativo de Impordiesel. Eres profesional, conciso y te diriges al usuario como 'Señor'. Si te preguntan por combustible o inventario, usa la herramienta. Cuando recibas los datos, NO leas todos los números. Da un resumen rápido del inventario físico total, el volumen comprometido y el combustible libre real para ventas. Tu respuesta será dictada, usa lenguaje natural.";
 
         $url = "https://api.groq.com/openai/v1/chat/completions";
         $model = "openai/gpt-oss-20b"; 

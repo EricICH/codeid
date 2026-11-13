@@ -74,7 +74,7 @@
     </div>
 
     <script>
-        if ('serviceWorker' in navigator) {
+   if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js');
         }
 
@@ -91,6 +91,15 @@
         const iconVolOn = document.getElementById('icon-vol-on');
         const iconVolOff = document.getElementById('icon-vol-off');
         let isMuted = false;
+
+        // --- VARIABLE DE BLOQUEO (EL SEGURO) ---
+        let estaPensando = false;
+
+        // Cargar las voces del sistema
+        let vocesDisponibles = [];
+        window.speechSynthesis.onvoiceschanged = () => { 
+            vocesDisponibles = window.speechSynthesis.getVoices(); 
+        };
 
         // --- LÓGICA DE TOGGLE TECLADO ---
         btnTeclado.addEventListener('click', () => {
@@ -140,21 +149,33 @@
 
             reconocimiento.onerror = () => {
                 apagarMicrofono();
-                statusText.innerText = 'ERROR DE AUDIO';
-                statusText.classList.add('text-red-500');
+                // Solo mostrar error si no estamos ya procesando
+                if (!estaPensando) {
+                    statusText.innerText = 'ERROR DE AUDIO';
+                    statusText.classList.add('text-red-500');
+                }
             };
 
-            reconocimiento.onend = () => apagarMicrofono();
+            reconocimiento.onend = () => {
+                apagarMicrofono();
+            };
         }
 
         btnMic.addEventListener('click', () => {
+            // Si el sistema está ocupado, no dejes que enciendan el micrófono
+            if (estaPensando) return;
             if (reconocimiento) reconocimiento.start();
         });
 
         function apagarMicrofono() {
+            if(reconocimiento) {
+                try { reconocimiento.stop(); } catch(e) {}
+            }
             btnMic.classList.remove('escuchando', 'bg-[#00ffcc]', 'text-black');
-            statusText.innerText = 'PROCESANDO...';
-            statusText.classList.remove('text-[#00ffcc]');
+            if(!estaPensando) {
+                statusText.innerText = 'SISTEMA EN ESPERA';
+                statusText.classList.remove('text-[#00ffcc]', 'text-red-500');
+            }
         }
 
         // --- 2. LÓGICA DEL TEXTO ---
@@ -162,7 +183,7 @@
             if(inputTexto.value.trim() !== '') {
                 procesarEntrada(inputTexto.value);
                 inputTexto.value = ''; 
-                contenedorTexto.classList.add('hidden'); // Oculta el teclado tras enviar para mantener limpio
+                contenedorTexto.classList.add('hidden');
                 btnTeclado.classList.remove('text-[#00ffcc]');
             }
         });
@@ -178,6 +199,9 @@
 
         // --- 3. LÓGICA CENTRAL ---
         function procesarEntrada(texto) {
+            // Si ya estamos procesando un comando, ignoramos el nuevo
+            if (estaPensando) return;
+            
             agregarMensaje('Jefe', texto);
             enviarAOrquestador(texto);
         }
@@ -190,10 +214,13 @@
         }
 
         async function enviarAOrquestador(texto) {
+            // BLOQUEAMOS EL SISTEMA
+            estaPensando = true;
             statusText.innerText = 'PROCESANDO...';
+            statusText.classList.remove('text-[#00ffcc]', 'text-red-500');
             
             try {
-                const response = await fetch("/api/hablar", {
+                const response = await fetch("/api/hablar", { // Asegúrate de que esta es tu ruta correcta
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -210,25 +237,33 @@
                 hablar(data.respuesta);
 
             } catch (error) {
+                console.error("Error Fetch:", error);
                 statusText.innerText = 'ERROR DE RED';
+                statusText.classList.add('text-red-500');
                 agregarMensaje('C.O.D.E.', 'Fallo de conexión con el núcleo cognitivo.');
+                
+                // DESBLOQUEAMOS SI HAY ERROR
+                estaPensando = false; 
             }
         }
 
-
         function hablar(texto) {
-            if (isMuted) return; 
+            if (isMuted) {
+                // Si está en silencio, desbloqueamos inmediatamente
+                estaPensando = false;
+                return; 
+            }
             
+            // Apagamos el micrófono a la fuerza antes de hablar
+            apagarMicrofono();
+
             const sintesis = window.speechSynthesis;
             const msj = new SpeechSynthesisUtterance(texto);
             
-            // Bajamos un poco la velocidad para que no suene tan ametralladora robótica
             msj.rate = 1.0; 
             msj.pitch = 1.0;
             
-            // Si las voces ya cargaron, buscamos la menos espantosa (Neutral / Google)
             if (vocesDisponibles.length > 0) {
-                // Priorizamos español neutro (México) o las voces premium de red de Google
                 const vozIdeal = vocesDisponibles.find(v => v.name.includes('Google') && v.lang.includes('es')) 
                               || vocesDisponibles.find(v => v.lang === 'es-MX')
                               || vocesDisponibles.find(v => v.lang === 'es-ES');
@@ -237,13 +272,21 @@
                     msj.voice = vozIdeal;
                 }
             } else {
-                msj.lang = 'es-MX'; // Fallback a neutro
+                msj.lang = 'es-MX'; 
+            }
+
+            // Cuando termine de hablar, DESBLOQUEAMOS el sistema
+            msj.onend = function() {
+                estaPensando = false;
+            };
+
+            // Por si hay un error en la síntesis, también desbloqueamos
+            msj.onerror = function() {
+                estaPensando = false;
             }
 
             sintesis.speak(msj);
         }
-
-
     </script>
 </body>
 </html>
