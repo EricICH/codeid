@@ -129,6 +129,7 @@ class CoreAgentController extends Controller
                     $payloadFase2 = [
                         "model" => $model,
                         "messages" => $messages,
+                        "tools" => $tools,
                         "temperature" => 0.2
                     ];
 
