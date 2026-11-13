@@ -82,7 +82,7 @@ class CoreAgentController extends Controller
                 if ($respuestaInventario->successful()) {
                     Log::info('Paso 4: Datos obtenidos con éxito de la API de TuCombustible.');
                     $datosJSON = $respuestaInventario->json();
-                    
+                    Log::info($datosJSON);
                     $resumenParaIA = [
                         'total_fisico_general' => $datosJSON['general_fisico'] ?? 0,
                         'total_comprometido_viajes' => $datosJSON['general_comprometido'] ?? 0,
