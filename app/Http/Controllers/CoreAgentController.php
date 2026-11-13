@@ -29,7 +29,7 @@ class CoreAgentController extends Controller
         // 2. LA URL Y EL MODELO (AQUÍ ESTÁ LA MAGIA)
         // Opción A: GROQ (El más rápido del mundo, Llama 3, plan gratis generoso)
         $url = "https://api.groq.com/openai/v1/chat/completions";
-        $model = "llama3-8b-8192"; 
+        $model = "openai/gpt-oss-20b"; 
 
         // Opción B: OPENAI (Descomenta estas dos líneas si prefieres usar llave de ChatGPT)
         // $url = "https://api.openai.com/v1/chat/completions";
