@@ -32,7 +32,6 @@ class CoreAgentController extends Controller
             ["role" => "user", "content" => $texto]
         ];
 
-        // 2. DEFINICIÓN DE LA HERRAMIENTA DEL DASHBOARD
         $tools = [
             [
                 "type" => "function",
@@ -41,7 +40,7 @@ class CoreAgentController extends Controller
                     "description" => "Consulta las métricas gerenciales del combustible. Devuelve el inventario físico en tanques, vehículos precargados, volumen comprometido en despachos programados y la disponibilidad real para la venta (por Diésel y MGO).",
                     "parameters" => [
                         "type" => "object",
-                        "properties" => [], 
+                        "properties" => new \stdClass(), // <--- LA MAGIA PARA QUE GROQ DEJE DE LLORAR
                     ]
                 ]
             ]
