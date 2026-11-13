@@ -16,13 +16,11 @@ class CoreAgentController extends Controller
             return response()->json(['respuesta' => 'No logré escuchar el comando, señor.']);
         }
 
-        $apiKey = env('OPENAI_API_KEY');
-        if (!$apiKey) {
-            return response()->json(['respuesta' => 'Error de sistema. Falta la credencial API universal.']);
-        }
+        Log::info('--- NUEVO COMANDO C.O.R.E: ' . $texto . ' ---');
 
-        // 1. INSTRUCCIÓN GERENCIAL (Ajustada para métricas financieras/logísticas)
-        $systemInstruction = "Eres C.O.R.E., el Asistente Corporativo de Alta Gerencia de Impordiesel. Eres profesional, conciso y te diriges al usuario como 'Señor' o 'Director'. Responde en español, de forma ejecutiva. Si te preguntan por combustible, inventario, disponibilidad o capacidad de venta, USA OBLIGATORIAMENTE LA HERRAMIENTA DISPONIBLE. Cuando tengas los datos, no leas números crudos uno por uno. Da un resumen ejecutivo diferenciando entre: el inventario físico total, el volumen ya comprometido en viajes, y el combustible libre real para ventas nuevas. Tu respuesta será dictada por un sintetizador de voz, así que NO uses viñetas raras ni markdown.";
+        $apiKey = env('OPENAI_API_KEY');
+        
+        $systemInstruction = "Eres C.O.R.E., el Asistente Corporativo de Impordiesel. Eres profesional, conciso y te diriges al usuario como 'Señor'. Si te preguntan por combustible o inventario, usa la herramienta. Cuando recibas los datos, NO leas todos los números. Da un resumen rápido del inventario físico total, el volumen comprometido y el combustible libre real para ventas. Tu respuesta será dictada, usa lenguaje natural.";
 
         $url = "https://api.groq.com/openai/v1/chat/completions";
         $model = "openai/gpt-oss-20b"; 
@@ -32,20 +30,16 @@ class CoreAgentController extends Controller
             ["role" => "user", "content" => $texto]
         ];
 
-        // 2. DEFINICIÓN DE LA HERRAMIENTA DEL DASHBOARD (A prueba de tontos y de PHP)
         $tools = [
             [
                 "type" => "function",
                 "function" => [
                     "name" => "consultar_metricas_dashboard",
-                    "description" => "Consulta las métricas gerenciales del combustible. Devuelve el inventario físico en tanques, vehículos precargados, volumen comprometido en despachos programados y la disponibilidad real para la venta.",
+                    "description" => "Consulta las métricas gerenciales del combustible. Devuelve el inventario físico, comprometido y disponible.",
                     "parameters" => [
                         "type" => "object",
                         "properties" => [
-                            "ejecutar" => [
-                                "type" => "boolean",
-                                "description" => "Parámetro de control interno. Siempre true."
-                            ]
+                            "ejecutar" => ["type" => "boolean", "description" => "Siempre true"]
                         ]
                     ]
                 ]
@@ -61,107 +55,93 @@ class CoreAgentController extends Controller
         ];
 
         try {
-            // Llamada inicial
+            Log::info('Paso 1: Iniciando llamada a Groq');
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $apiKey,
                 'Content-Type' => 'application/json'
             ])->timeout(30)->post($url, $payload);
 
             if (!$response->successful()) {
-                Log::error('Error API Inicial: ' . $response->body());
-                return response()->json(['respuesta' => 'Fallo de conexión en la primera fase del núcleo cognitivo.']);
+                Log::error('Error Groq Fase 1: ' . $response->body());
+                return response()->json(['respuesta' => 'Fallo en la primera fase del núcleo cognitivo.']);
             }
 
-            $responseData = $response->json();
-            $mensajeIA = $responseData['choices'][0]['message'];
+            $mensajeIA = $response->json('choices.0.message');
+            Log::info('Paso 2: Groq respondió Fase 1. ¿Usó herramienta? ' . (isset($mensajeIA['tool_calls']) ? 'SÍ' : 'NO'));
 
-            // 3. LA IA DECIDE USAR LA HERRAMIENTA
             if (isset($mensajeIA['tool_calls']) && count($mensajeIA['tool_calls']) > 0) {
                 
                 $toolCall = $mensajeIA['tool_calls'][0];
                 
-                if ($toolCall['function']['name'] === 'consultar_metricas_dashboard') {
+                // AQUÍ: Pon tu URL real. SI ESTÁS EN LOCAL, ESTO PUEDE CAUSAR DEADLOCK.
+                $urlSistemaViejo = "https://code.impordiesel.com.ve/api/admin/reportes/comnbustible-dashboard"; 
+                
+                Log::info('Paso 3: Llamando a la API de Impordiesel: ' . $urlSistemaViejo);
+                $respuestaInventario = Http::timeout(10)->get($urlSistemaViejo);
+                
+                if ($respuestaInventario->successful()) {
+                    Log::info('Paso 4: Datos obtenidos con éxito de la API de Impordiesel.');
+                    $datosJSON = $respuestaInventario->json();
                     
-                    // --- CONEXIÓN AL NUEVO ENDPOINT DEL DASHBOARD ---
-                    // IMPORTANTE: Cambia "tu-sistema-viejo.com" por el dominio real.
-                    // Y mantuve tu error ortográfico "comnbustible-dashboard" para que no se rompa la ruta.
-                    $urlSistemaViejo = "https://tucombustible.com.ve/api/admin/reportes/comnbustible-dashboard"; 
-                    
-                    try {
-                        $respuestaInventario = Http::timeout(10)->get($urlSistemaViejo);
-                        
-                        if ($respuestaInventario->successful()) {
-                            // Extraemos la data. (Dependiendo de si tu Controller devuelve un array plano o envuelto en data)
-                            // Si devuelve directo el array, usamos $respuestaInventario->json()
-                            $datosJSON = $respuestaInventario->json();
-                            
-                            // Simplificamos la data antes de dársela a la IA para no confundirla con las tablas de $disponibilidades completas
-                            $resumenParaIA = [
-                                'total_fisico_general' => $datosJSON['general_fisico'] ?? 0,
-                                'total_comprometido_viajes' => $datosJSON['general_comprometido'] ?? 0,
-                                'disponible_para_nueva_venta' => $datosJSON['general_venta'] ?? 0,
-                                'desglose_diesel' => [
-                                    'disponible_total' => $datosJSON['totalDisponibleDiesel'] ?? 0,
-                                    'comprometido' => $datosJSON['totalComprometidoDiesel'] ?? 0
-                                ],
-                                'desglose_mgo' => [
-                                    'disponible_total' => $datosJSON['totalDisponibleMgo'] ?? 0,
-                                    'comprometido' => $datosJSON['totalComprometidoMgo'] ?? 0
-                                ]
-                            ];
-
-                            $contenidoHerramienta = json_encode($resumenParaIA);
-                        } else {
-                            $contenidoHerramienta = "Error: El sistema central devolvió un código " . $respuestaInventario->status();
-                        }
-                    } catch (\Exception $e) {
-                        $contenidoHerramienta = "Error de red al intentar contactar al sistema central: " . $e->getMessage();
-                    }
-
-                    // 4. SEGUNDO ENVÍO: Devolvemos los datos gerenciales a la IA
-                    $messages[] = $mensajeIA; 
-                    $messages[] = [
-                        "role" => "tool",
-                        "tool_call_id" => $toolCall['id'],
-                        "content" => (string)$contenidoHerramienta
+                    $resumenParaIA = [
+                        'total_fisico_general' => $datosJSON['general_fisico'] ?? 0,
+                        'total_comprometido_viajes' => $datosJSON['general_comprometido'] ?? 0,
+                        'disponible_para_nueva_venta' => $datosJSON['general_venta'] ?? 0,
                     ];
-
-                    $payloadFase2 = [
-                        "model" => $model,
-                        "messages" => $messages,
-                        "tools" => $tools,
-                        "temperature" => 0.2
-                    ];
-
-                    $responseFase2 = Http::withHeaders([
-                        'Authorization' => 'Bearer ' . $apiKey,
-                        'Content-Type' => 'application/json'
-                    ])->timeout(30)->post($url, $payloadFase2);
-
-                    if ($responseFase2->successful()) {
-                        $respuestaFinal = $responseFase2->json('choices.0.message.content');
-                    } else {
-                        Log::error('Error API Fase 2: ' . $responseFase2->body());
-                        $respuestaFinal = 'Error al procesar las métricas financieras, señor.';
-                    }
-
+                    $contenidoHerramienta = json_encode($resumenParaIA);
                 } else {
-                    $respuestaFinal = "El núcleo intentó ejecutar una herramienta no autorizada.";
+                    Log::error('Error API Impordiesel: Status ' . $respuestaInventario->status());
+                    $contenidoHerramienta = "Error: El sistema central devolvió un código " . $respuestaInventario->status();
+                }
+
+                $messages[] = $mensajeIA; 
+                $messages[] = [
+                    "role" => "tool",
+                    "tool_call_id" => $toolCall['id'],
+                    "content" => $contenidoHerramienta
+                ];
+
+                $payloadFase2 = [
+                    "model" => $model,
+                    "messages" => $messages,
+                    "tools" => $tools, // Obligatorio reenviarlo
+                    "temperature" => 0.2
+                ];
+
+                Log::info('Paso 5: Enviando datos de vuelta a Groq para Fase 2');
+                $responseFase2 = Http::withHeaders([
+                    'Authorization' => 'Bearer ' . $apiKey,
+                    'Content-Type' => 'application/json'
+                ])->timeout(30)->post($url, $payloadFase2);
+
+                if ($responseFase2->successful()) {
+                    $respuestaFinal = $responseFase2->json('choices.0.message.content');
+                    Log::info('Paso 6: Éxito total. Respuesta generada.');
+                } else {
+                    Log::error('Error Groq Fase 2: ' . $responseFase2->body());
+                    $respuestaFinal = 'Error al procesar las métricas financieras.';
                 }
 
             } else {
-                $respuestaFinal = $mensajeIA['content'] ?? 'Comando recibido, pero sin parámetros de acción.';
+                $respuestaFinal = $mensajeIA['content'] ?? 'Comando recibido, pero sin parámetros.';
+            }
+
+            // Si por alguna razón la IA devuelve null
+            if (empty($respuestaFinal)) {
+                $respuestaFinal = "Señor, he procesado los datos pero el núcleo cognitivo omitió la respuesta verbal.";
             }
 
             $respuestaLimpia = str_replace(['*', '#', '_', '`'], '', $respuestaFinal);
+            Log::info('--- FIN COMANDO: Devolviendo respuesta al navegador ---');
+            
             return response()->json([
                 'respuesta' => trim($respuestaLimpia)
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Exception C.O.R.E: ' . $e->getMessage());
+            Log::error('Exception C.O.R.E Catch Principal: ' . $e->getMessage());
             return response()->json([
-                'respuesta' => 'Ocurrió un fallo en los sistemas centrales.'
+                'respuesta' => 'Ocurrió un fallo de servidor.'
             ]);
         }
     }
