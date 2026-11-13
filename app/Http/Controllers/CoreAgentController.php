@@ -74,13 +74,13 @@ class CoreAgentController extends Controller
                 $toolCall = $mensajeIA['tool_calls'][0];
                 
                 // AQUÍ: Pon tu URL real. SI ESTÁS EN LOCAL, ESTO PUEDE CAUSAR DEADLOCK.
-                $urlSistemaViejo = "https://code.impordiesel.com.ve/api/admin/reportes/combustible-dashboard"; 
+                $urlSistemaViejo = "https://code.tucombustible.com.ve/api/admin/reportes/combustible-dashboard"; 
                 
-                Log::info('Paso 3: Llamando a la API de Impordiesel: ' . $urlSistemaViejo);
+                Log::info('Paso 3: Llamando a la API de TuCombustible: ' . $urlSistemaViejo);
                 $respuestaInventario = Http::timeout(10)->get($urlSistemaViejo);
                 
                 if ($respuestaInventario->successful()) {
-                    Log::info('Paso 4: Datos obtenidos con éxito de la API de Impordiesel.');
+                    Log::info('Paso 4: Datos obtenidos con éxito de la API de TuCombustible.');
                     $datosJSON = $respuestaInventario->json();
                     
                     $resumenParaIA = [
