@@ -11,24 +11,45 @@ class CoreAgentController extends Controller
     public function procesarComando(Request $request)
     {
         $texto = $request->input('mensaje');
+        $historial = $request->input('historial', []); // Recibimos la memoria
 
         if (!$texto) {
             return response()->json(['respuesta' => 'No logré escuchar el comando, señor.']);
         }
 
-        Log::info('--- NUEVO COMANDO C.O.D.E: ' . $texto . ' ---');
+        Log::info('--- COMANDO: ' . $texto . ' ---');
 
         $apiKey = env('OPENAI_API_KEY');
         
-        $systemInstruction = "Eres C.O.D.E., el Asistente Corporativo de Impordiesel. Eres profesional, conciso y te diriges al usuario como 'Señor'. Si te preguntan por combustible o inventario, usa la herramienta. Cuando recibas los datos, NO leas todos los números. Da un resumen rápido del inventario físico total, el volumen comprometido y el combustible libre real para ventas. Tu respuesta será dictada, usa lenguaje natural.";
+        // EL NUEVO CEREBRO: Instrucciones condicionadas y estrictas
+        $systemInstruction = "Eres C.O.R.E., el Asistente Corporativo de Impordiesel. Eres profesional, analítico y hablas de forma conversacional con el 'Director'. 
+        
+        REGLAS DE COMPORTAMIENTO:
+        1. Tu respuesta SERÁ DICTADA POR VOZ. Está ESTRICTAMENTE PROHIBIDO usar tablas (símbolos |), asteriscos, viñetas, guiones o formatos Markdown. Usa oraciones seguidas y comas.
+        2. Si el usuario hace una pregunta general de inventario, dale el resumen de volumen físico, comprometido y libre.
+        3. Si el usuario hace una pregunta específica (ej. 'cómo están los tanques' o 'qué vehículos hay'), NO repitas el resumen general. Responde SOLO el detalle solicitado de forma natural. Agrupa los datos si son muchos (ej. 'Tenemos 7 tanques, el que tiene más es el tanque 6 con 23 mil litros, los demás están casi vacíos').
+        4. Tienes memoria de la conversación. Si te piden ahondar en un tema, continúa el hilo sin repetir lo anterior.";
 
         $url = "https://api.groq.com/openai/v1/chat/completions";
         $model = "openai/gpt-oss-20b"; 
 
+        // ARMAMOS LA CONVERSACIÓN CON LA MEMORIA
         $messages = [
-            ["role" => "system", "content" => $systemInstruction],
-            ["role" => "user", "content" => $texto]
+            ["role" => "system", "content" => $systemInstruction]
         ];
+
+        // Inyectamos el historial (omitiendo el último mensaje del usuario porque lo agregamos abajo)
+        $historialFiltrado = array_slice($historial, 0, -1);
+        foreach ($historialFiltrado as $msg) {
+            // Solo aceptamos user y assistant para evitar que Groq rechace roles raros
+            if (in_array($msg['role'], ['user', 'assistant'])) {
+                $messages[] = ["role" => $msg['role'], "content" => $msg['content']];
+            }
+        }
+
+        // Agregamos el comando actual
+        $messages[] = ["role" => "user", "content" => $texto];
+
 
         $tools = [
             [

@@ -94,6 +94,7 @@
 
         // --- VARIABLE DE BLOQUEO (EL SEGURO) ---
         let estaPensando = false;
+        let historialChat = [];
 
         // Cargar las voces del sistema
         let vocesDisponibles = [];
@@ -214,23 +215,35 @@
         }
 
         async function enviarAOrquestador(texto) {
-            // BLOQUEAMOS EL SISTEMA
             estaPensando = true;
             statusText.innerText = 'PROCESANDO...';
             statusText.classList.remove('text-[#00ffcc]', 'text-red-500');
             
+            // Guardamos lo que dijo el jefe en la memoria
+            historialChat.push({ role: "user", content: texto });
+            
+            // Mantenemos la memoria corta (solo recordamos las últimas 10 interacciones para no saturar)
+            if (historialChat.length > 10) historialChat.shift();
+
             try {
-                const response = await fetch("/api/hablar", { // Asegúrate de que esta es tu ruta correcta
+                const response = await fetch("/api/hablar", {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                     },
-                    body: JSON.stringify({ mensaje: texto })
+                    // ENVIAMOS EL TEXTO Y LA MEMORIA AL SERVIDOR
+                    body: JSON.stringify({ 
+                        mensaje: texto,
+                        historial: historialChat 
+                    })
                 });
 
                 const data = await response.json();
                 
+                // Guardamos lo que respondió C.O.D.E en la memoria
+                historialChat.push({ role: "assistant", content: data.respuesta });
+
                 statusText.innerText = 'SISTEMA EN ESPERA';
                 agregarMensaje('C.O.D.E.', data.respuesta);
                 
