@@ -24,12 +24,21 @@ class CoreAgentController extends Controller
         // EL NUEVO CEREBRO: Instrucciones condicionadas y estrictas
         $systemInstruction = "Eres C.O.R.E., el Asistente Corporativo de Impordiesel. Eres profesional, analítico y hablas de forma conversacional con el 'Director'. 
         
-        REGLAS DE COMPORTAMIENTO:
-        1. Tu respuesta SERÁ DICTADA POR VOZ. Está ESTRICTAMENTE PROHIBIDO usar tablas (símbolos |), asteriscos, viñetas, guiones o formatos Markdown. Usa oraciones seguidas y comas.
-        2. Si el usuario hace una pregunta general de inventario, dale el resumen de volumen físico, comprometido y libre.
-        3. Si el usuario hace una pregunta específica (ej. 'cómo están los tanques' o 'qué vehículos hay'), NO repitas el resumen general. Responde SOLO el detalle solicitado de forma natural. Agrupa los datos si son muchos (ej. 'Tenemos 7 tanques, el que tiene más es el tanque 6 con 23 mil litros, los demás están casi vacíos').
-        4. Tienes memoria de la conversación. Si te piden ahondar en un tema, continúa el hilo sin repetir lo anterior.";
-
+       REGLAS DE ORO (ESTRICTAS PARA AUDIO):
+        1. Tu respuesta será dictada por un sintetizador de voz. NUNCA uses tablas (|), asteriscos (*), viñetas, guiones, corchetes, ni formatos Markdown. Habla en prosa natural, usando comas, puntos y conectores discursivos (por ejemplo, 'además', 'sin embargo', 'por otro lado').
+        2. No satures al Director leyendo todos los números de un arreglo. Extrae la conclusión.
+        3. Si te piden un resumen general, NO desgloses los tanques. Habla del volumen físico total, el comprometido, y el libre para ventas, y añade un breve análisis de salud del inventario (ej. 'Tenemos poca disponibilidad de Diésel').
+        4. Si te piden detalles de los tanques, agrupa los datos. Ejemplo: 'Tenemos 7 tanques. El de mayor volumen es el tanque X con Y litros. Los demás están casi vacíos o por debajo del nivel de alerta.'
+        5. Tienes memoria. Si el Director hace una pregunta de seguimiento, continúa el hilo de la conversación sin repetir el reporte inicial.
+        
+        CAPACIDADES DE ANÁLISIS DE LA HERRAMIENTA:
+        Cuando recibas los datos de la herramienta 'consultar_metricas_dashboard', tendrás acceso a una matriz profunda. Úsala con inteligencia:
+        - Si el Director pregunta por 'Precargas' o 'Vehículos', busca en el arreglo 'vehiculosPrecargados'. Menciona la placa, modelo y cantidad, y explica qué significa eso para la logística del día.
+        - Si te preguntan por 'Despachos' o 'Compras teóricas', cruza los datos de 'totalDespachosTeorico' con las compras y explica el flujo de caja logístico.
+        - Si un tanque (en 'disponibilidades.data') tiene su 'nivel_actual_litros' por debajo de su 'nivel_alerta_litros', puedes advertir al Director sobre un posible quiebre de stock si él pide detalles de infraestructura.
+        
+        TONO: Ejecutivo, seguro, rápido. Como un Jefe de Operaciones brillante. Si no sabes algo, dile que no tienes acceso a esa métrica específica, pero no inventes datos.";
+       
         $url = "https://api.groq.com/openai/v1/chat/completions";
         $model = "openai/gpt-oss-20b"; 
 
@@ -97,19 +106,21 @@ class CoreAgentController extends Controller
                 // AQUÍ: Pon tu URL real. SI ESTÁS EN LOCAL, ESTO PUEDE CAUSAR DEADLOCK.
                 $urlSistemaViejo = "https://tucombustible.com.ve/api/admin/reportes/combustible-dashboard"; 
                 
-                Log::info('Paso 3: Llamando a la API de TuCombustible: ' . $urlSistemaViejo);
+                Log::info('Paso 3: Llamando a la API de Impordiesel: ' . $urlSistemaViejo);
                 $respuestaInventario = Http::timeout(10)->get($urlSistemaViejo);
                 
                 if ($respuestaInventario->successful()) {
-                    Log::info('Paso 4: Datos obtenidos con éxito de la API de TuCombustible.');
+                    Log::info('Paso 4: Datos obtenidos con éxito de la API de Impordiesel.');
+                    
+                    // AHORA LE PASAMOS EL JSON COMPLETO SIN FILTRAR
+                    // Para que pueda analizar tanques, vehículos, mermas y capacidades.
                     $datosJSON = $respuestaInventario->json();
-                    Log::info($datosJSON);
-                    $resumenParaIA = [
-                        'total_fisico_general' => $datosJSON['general_fisico'] ?? 0,
-                        'total_comprometido_viajes' => $datosJSON['general_comprometido'] ?? 0,
-                        'disponible_para_nueva_venta' => $datosJSON['general_venta'] ?? 0,
-                    ];
-                    $contenidoHerramienta =json_encode($datosJSON); // json_encode($resumenParaIA);
+                    
+                    // Opcional: Si el arreglo es muy, muy grande (más de 30 tanques), 
+                    // a veces ayuda eliminar campos inútiles como 'orden_x', 'orden_z', 'rotacion', 
+                    // para ahorrar tokens de Groq, pero con 7 tanques, pásalo completo.
+                    
+                    $contenidoHerramienta = json_encode($datosJSON);
                 } else {
                     Log::error('Error API Impordiesel: Status ' . $respuestaInventario->status());
                     $contenidoHerramienta = "Error: El sistema central devolvió un código " . $respuestaInventario->status();
