@@ -32,15 +32,21 @@ class CoreAgentController extends Controller
             ["role" => "user", "content" => $texto]
         ];
 
+        // 2. DEFINICIÓN DE LA HERRAMIENTA DEL DASHBOARD (A prueba de tontos y de PHP)
         $tools = [
             [
                 "type" => "function",
                 "function" => [
                     "name" => "consultar_metricas_dashboard",
-                    "description" => "Consulta las métricas gerenciales del combustible. Devuelve el inventario físico en tanques, vehículos precargados, volumen comprometido en despachos programados y la disponibilidad real para la venta (por Diésel y MGO).",
+                    "description" => "Consulta las métricas gerenciales del combustible. Devuelve el inventario físico en tanques, vehículos precargados, volumen comprometido en despachos programados y la disponibilidad real para la venta.",
                     "parameters" => [
                         "type" => "object",
-                        "properties" => new \stdClass(), // <--- LA MAGIA PARA QUE GROQ DEJE DE LLORAR
+                        "properties" => [
+                            "ejecutar" => [
+                                "type" => "boolean",
+                                "description" => "Parámetro de control interno. Siempre true."
+                            ]
+                        ]
                     ]
                 ]
             ]
