@@ -243,6 +243,15 @@
 
                 const data = await response.json();
 
+                 
+                // Guardamos lo que respondió C.O.D.E en la memoria
+                historialChat.push({ role: "assistant", content: data.respuesta });
+
+                statusText.innerText = 'SISTEMA EN ESPERA';
+                agregarMensaje('C.O.D.E.', data.respuesta);
+                
+                hablar(data.respuesta);
+
                 // =========================================================
                 // MAGIA DE HIGHCHARTS (Para que no llores si no dibuja)
                 // =========================================================
@@ -279,14 +288,7 @@
                     });
                 }
                 // =========================================================
-                
-                // Guardamos lo que respondió C.O.D.E en la memoria
-                historialChat.push({ role: "assistant", content: data.respuesta });
-
-                statusText.innerText = 'SISTEMA EN ESPERA';
-                agregarMensaje('C.O.D.E.', data.respuesta);
-                
-                hablar(data.respuesta);
+               
 
             } catch (error) {
                 console.error("Error Fetch:", error);
