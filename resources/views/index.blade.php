@@ -256,48 +256,41 @@
                 // MAGIA DE HIGHCHARTS (Para que no llores si no dibuja)
                 // =========================================================
                 if (data.tipo_accion === 'graficar') {
-                    // 1. Me invento un ID único para que si pides 5 gráficas no se sobrescriban
                     const chartId = 'chart-' + Date.now();
                     
-                    // 2. Inyecto un contenedor div vacío en tu chatBox
-                    // (Ajusta 'chatBox' al nombre de la variable de tu contenedor de mensajes, por el amor de Dios)
                     chatBox.innerHTML += `
                         <div class="flex w-full mt-2 space-x-3 max-w-2xl mx-auto">
                             <div id="${chartId}" class="w-full h-72 bg-white rounded-lg shadow-md p-2 border border-gray-200"></div>
                         </div>
                     `;
-                    
-                    // Bajo el scroll para que el ciego del Director vea la gráfica
                     chatBox.scrollTop = chatBox.scrollHeight;
 
-                    // 3. Extraigo la papilla masticada que mandó la IA desde el backend
                     const hc = data.highcharts_data;
+                    
+                    // Aquí separamos la data a prueba de fallos
+                    const categoriasSeguras = hc.data_points.map(item => item.label);
+                    const valoresSeguros = hc.data_points.map(item => item.value);
 
-                    // 4. Mando a pintar la maldita gráfica
                     Highcharts.chart(chartId, {
                         chart: { type: hc.chart_type },
                         title: { text: hc.title },
-                        xAxis: { categories: hc.categories },
+                        xAxis: { categories: categoriasSeguras },
                         yAxis: { title: { text: hc.series_name } },
-                        // ESTO ES LO QUE TE FALTA, CÓPIALO BIEN:
                         plotOptions: {
                             series: {
                                 dataLabels: {
-                                    enabled: true, // Esto enciende los numeritos siempre
-                                    format: '{y}', // Muestra el valor
-                                    style: {
-                                        fontWeight: 'bold',
-                                        color: '#333'
-                                    }
+                                    enabled: true,
+                                    format: '{y}',
+                                    style: { fontWeight: 'bold', color: '#333' }
                                 }
                             }
                         },
                         series: [{
                             name: hc.series_name,
-                            data: hc.series_data,
-                            color: '#00ffcc' // Un azul neón, para que se vea "tecnológico" y dejes de fastidiar
+                            data: valoresSeguros,
+                            color: '#00ffcc'
                         }],
-                        credits: { enabled: false } // Para quitar la marca de agua molesta de Highcharts
+                        credits: { enabled: false }
                     });
                 }
                 // =========================================================
