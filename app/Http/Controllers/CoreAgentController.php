@@ -185,7 +185,28 @@ class CoreAgentController extends Controller
                 ])->timeout(30)->post($urlLLM, $payloadFase2);
 
                 if ($responseFase2->successful()) {
-                    $respuestaFinal = $responseFase2->json('choices.0.message.content');
+                    $mensajeFase2 = $responseFase2->json('choices.0.message');
+                    
+                    // NUEVO: Verificamos si en la Fase 2 la IA decidió usar OTRA herramienta (ej. la gráfica)
+                    if (isset($mensajeFase2['tool_calls']) && count($mensajeFase2['tool_calls']) > 0) {
+                        $toolCallFase2 = $mensajeFase2['tool_calls'][0];
+                        
+                        if ($toolCallFase2['function']['name'] === 'renderizar_grafica_highcharts') {
+                            Log::info("Interceptando petición gráfica en la FASE 2...");
+                            
+                            $argumentosGrafica = json_decode($toolCallFase2['function']['arguments'], true) ?? [];
+                            
+                            return response()->json([
+                                'respuesta' => 'Enseguida, señor. He desplegado la gráfica con los datos actualizados.',
+                                'tipo_accion' => 'graficar',
+                                'highcharts_data' => $argumentosGrafica
+                            ]);
+                        }
+                    }
+
+                    // Si no usó otra herramienta, entonces sí extraemos el texto normal
+                    $respuestaFinal = $mensajeFase2['content'];
+                    
                 } else {
                     Log::error('Error Groq Fase 2: ' . $responseFase2->body());
                     $respuestaFinal = 'Error al procesar el análisis de los datos.';
