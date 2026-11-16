@@ -279,6 +279,19 @@
                         title: { text: hc.title },
                         xAxis: { categories: hc.categories },
                         yAxis: { title: { text: hc.series_name } },
+                        // ESTO ES LO QUE TE FALTA, CÓPIALO BIEN:
+                        plotOptions: {
+                            series: {
+                                dataLabels: {
+                                    enabled: true, // Esto enciende los numeritos siempre
+                                    format: '{y}', // Muestra el valor
+                                    style: {
+                                        fontWeight: 'bold',
+                                        color: '#333'
+                                    }
+                                }
+                            }
+                        },
                         series: [{
                             name: hc.series_name,
                             data: hc.series_data,
