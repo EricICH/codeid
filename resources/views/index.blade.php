@@ -10,6 +10,7 @@
     <meta name="theme-color" content="#00ffcc">
     
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.highcharts.com/highcharts.js"></script>
     <style>
         body { background-color: #050505; color: #00ffcc; font-family: 'Courier New', monospace; overflow: hidden; }
         .radar { position: relative; }
@@ -22,6 +23,7 @@
         @keyframes pulsoRadar { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(2); opacity: 0; } }
         #chat-box::-webkit-scrollbar { display: none; }
     </style>
+
 </head>
 <body class="h-screen w-screen flex flex-col items-center justify-between p-4 relative">
 
@@ -240,6 +242,43 @@
                 });
 
                 const data = await response.json();
+
+                // =========================================================
+                // MAGIA DE HIGHCHARTS (Para que no llores si no dibuja)
+                // =========================================================
+                if (data.tipo_accion === 'graficar') {
+                    // 1. Me invento un ID único para que si pides 5 gráficas no se sobrescriban
+                    const chartId = 'chart-' + Date.now();
+                    
+                    // 2. Inyecto un contenedor div vacío en tu chatBox
+                    // (Ajusta 'chatBox' al nombre de la variable de tu contenedor de mensajes, por el amor de Dios)
+                    chatBox.innerHTML += `
+                        <div class="flex w-full mt-2 space-x-3 max-w-2xl mx-auto">
+                            <div id="${chartId}" class="w-full h-72 bg-white rounded-lg shadow-md p-2 border border-gray-200"></div>
+                        </div>
+                    `;
+                    
+                    // Bajo el scroll para que el ciego del Director vea la gráfica
+                    chatBox.scrollTop = chatBox.scrollHeight;
+
+                    // 3. Extraigo la papilla masticada que mandó la IA desde el backend
+                    const hc = data.highcharts_data;
+
+                    // 4. Mando a pintar la maldita gráfica
+                    Highcharts.chart(chartId, {
+                        chart: { type: hc.chart_type },
+                        title: { text: hc.title },
+                        xAxis: { categories: hc.categories },
+                        yAxis: { title: { text: hc.series_name } },
+                        series: [{
+                            name: hc.series_name,
+                            data: hc.series_data,
+                            color: '#00ffcc' // Un azul neón, para que se vea "tecnológico" y dejes de fastidiar
+                        }],
+                        credits: { enabled: false } // Para quitar la marca de agua molesta de Highcharts
+                    });
+                }
+                // =========================================================
                 
                 // Guardamos lo que respondió C.O.D.E en la memoria
                 historialChat.push({ role: "assistant", content: data.respuesta });

@@ -127,6 +127,16 @@ class CoreAgentController extends Controller
 
                 Log::info("La IA decidió usar la herramienta: " . $nombreHerramienta);
 
+                if ($nombreHerramienta === 'renderizar_grafica_highcharts') {
+                    Log::info("Interceptando petición gráfica. Enviando JSON al frontend...");
+                    return response()->json([
+                        'respuesta' => 'Enseguida, señor. He desplegado la gráfica en su pantalla.',
+                        'tipo_accion' => 'graficar',
+                        'highcharts_data' => $argumentosHerramienta
+                    ]);
+                }
+                // ======   
+
                 if (isset($rutasHerramientas[$nombreHerramienta])) {
                     $urlEjecutar = $rutasHerramientas[$nombreHerramienta]['url'];
                     $metodoEjecutar = $rutasHerramientas[$nombreHerramienta]['method'];
