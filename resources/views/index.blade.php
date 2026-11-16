@@ -295,7 +295,56 @@
                 }
                 // =========================================================
                
-
+                // =========================================================
+                // MAGIA DEL CALENDARIO / AGENDA
+                // =========================================================
+                if (data.tipo_accion === 'calendario') {
+                    const cal = data.calendario_data;
+                    
+                    // Contenedor principal
+                    let html = `<div class="w-full mt-4 bg-white shadow-lg rounded-lg overflow-hidden max-w-2xl mx-auto p-5 text-left border border-gray-100">`;
+                    html += `<h3 class="text-lg font-bold border-b border-gray-200 pb-2 mb-4 text-gray-800">📅 ${cal.titulo}</h3>`;
+                    
+                    // Recorrer cada día
+                    cal.dias.forEach(dia => {
+                        html += `<div class="mb-5">
+                                    <h4 class="bg-blue-50 text-blue-800 font-bold px-3 py-1 rounded mb-3 inline-block shadow-sm text-sm uppercase">${dia.fecha}</h4>
+                                    <div class="space-y-4 pl-2">`;
+                        
+                        // Recorrer los viajes de ese día
+                        dia.viajes.forEach(v => {
+                            html += `<div class="flex items-start border-l-4 border-blue-500 pl-4 relative">
+                                        <!-- Bolita de la línea de tiempo -->
+                                        <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-white border-4 border-blue-500"></div>
+                                        
+                                        <!-- Hora -->
+                                        <div class="text-sm font-extrabold text-gray-700 w-20 shrink-0 mt-0.5">${v.hora}</div>
+                                        
+                                        <!-- Contenido del Viaje -->
+                                        <div class="flex-1">
+                                            <div class="font-bold text-gray-900">${v.destino} 
+                                                <span class="text-xs bg-green-100 text-green-800 font-bold px-2 py-0.5 rounded ml-2 shadow-sm">${v.litros} Litros</span>
+                                            </div>
+                                            <div class="text-xs text-gray-600 mt-1">
+                                                <span class="font-semibold">👨‍✈️ Chofer:</span> ${v.chofer}
+                                            </div>
+                                            <div class="text-xs text-gray-500 mt-0.5 italic">
+                                                📝 ${v.detalles}
+                                            </div>
+                                        </div>
+                                    </div>`;
+                        });
+                        
+                        html += `   </div>
+                                  </div>`;
+                    });
+                    
+                    html += `</div>`;
+                    
+                    // Inyectar en el chat
+                    chatBox.innerHTML += html;
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }
             } catch (error) {
                 console.error("Error Fetch:", error);
                 statusText.innerText = 'ERROR DE RED';

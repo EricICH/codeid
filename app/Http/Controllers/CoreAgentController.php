@@ -200,7 +200,16 @@ class CoreAgentController extends Controller
                                 'tipo_accion' => 'graficar',
                                 'highcharts_data' => $argumentosGrafica
                             ]);
-                        } else {
+                        } elseif ($toolCallFase2['function']['name'] === 'renderizar_calendario_viajes') {
+                            Log::info("Interceptando petición de CALENDARIO en la FASE 2...");
+                            $argsCal = json_decode($toolCallFase2['function']['arguments'], true) ?? [];
+                            
+                            return response()->json([
+                                'respuesta' => $argsCal['mensaje_voz'] ?? 'Aquí tiene el cronograma, señor.',
+                                'tipo_accion' => 'calendario',
+                                'calendario_data' => $argsCal
+                            ]);
+                        }else {
                             // Si intentó usar OTRA herramienta que no es la gráfica, lo ignoramos y avisamos
                             $respuestaFinal = "Señor, el núcleo intentó procesar una acción secundaria no soportada.";
                         }
