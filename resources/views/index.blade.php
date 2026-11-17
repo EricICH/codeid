@@ -33,6 +33,10 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
         </svg>
     </button>
+    <button id="btn-instalar-pwa" class="hidden fixed top-4 right-4 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow-lg z-50 flex items-center transition-all">
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+        Instalar C.O.D.E.
+    </button>
 
     <!-- Botón de Mute (Esquina Superior Derecha) -->
     <button id="btn-mute" class="absolute top-6 right-6 text-gray-500 hover:text-[#00ffcc] transition-colors focus:outline-none">
@@ -396,6 +400,50 @@
 
             sintesis.speak(msj);
         }
+
+        let promptInstalacion;
+    const btnInstalar = document.getElementById('btn-instalar-pwa');
+
+    // 1. Escuchar cuando el navegador dice "Oye, esta web se puede instalar"
+    window.addEventListener('beforeinstallprompt', (e) => {
+        // Prevenir que Chrome muestre el mini-banner feo por defecto abajo
+        e.preventDefault();
+        
+        // Guardar el evento para dispararlo luego cuando el usuario le dé al botón
+        promptInstalacion = e;
+        
+        // Quitar la clase 'hidden' para mostrar NUESTRO botón
+        btnInstalar.classList.remove('hidden');
+    });
+
+    // 2. Qué hacer cuando el jefe (o tú) hace clic en el botón
+    btnInstalar.addEventListener('click', async () => {
+        if (!promptInstalacion) return;
+
+        // Mostrar la ventana nativa de instalación del sistema operativo
+        promptInstalacion.prompt();
+
+        // Esperar a ver qué decidió el usuario
+        const { outcome } = await promptInstalacion.userChoice;
+        
+        if (outcome === 'accepted') {
+            console.log('El usuario aceptó instalar la aberración');
+        } else {
+            console.log('El usuario tuvo sentido común y la rechazó');
+        }
+
+        // Ya no podemos usar el prompt, lo limpiamos y ocultamos el botón
+        promptInstalacion = null;
+        btnInstalar.classList.add('hidden');
+    });
+
+    // 3. Escuchar cuando la instalación se completa con éxito (para limpiar)
+    window.addEventListener('appinstalled', () => {
+        // Ocultar el botón si por alguna razón seguía ahí
+        btnInstalar.classList.add('hidden');
+        promptInstalacion = null;
+        console.log('C.O.R.E. instalado correctamente. Que Dios nos ampare.');
+    });
     </script>
 </body>
 </html>
